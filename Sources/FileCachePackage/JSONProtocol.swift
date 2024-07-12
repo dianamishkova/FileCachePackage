@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol JSONProtocol {
+public protocol JSONProtocol {
     var json: Any { get }
     static func parse(json: Any) -> Self?
 }
