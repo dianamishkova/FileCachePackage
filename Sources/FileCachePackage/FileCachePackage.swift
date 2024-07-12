@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import CocoaLumberjackSwift
 
 class FileCache: ObservableObject {
     @Published private(set) var todoItemsList: [TodoItem] = []
@@ -14,10 +13,12 @@ class FileCache: ObservableObject {
     @Published private(set) var error: DataError? = nil
     @Published private var todoDictionary = [String: DateSection]()
     private(set) var dateSectionsList: [DateSection]?
+    
     var completedCount: Int {
         todoItemsList.filter { $0.completed }.count
     }
-   
+    
+    
     var groupedTodoItems: [Date: [TodoItem]] {
         Dictionary(grouping: todoItemsList) { item in
             Calendar.current.startOfDay(for: item.deadline ?? Date())
@@ -30,55 +31,37 @@ class FileCache: ObservableObject {
         } else {
             todoItemsList.append(item)
         }
-        DDLogInfo("Item added: \(item)")
+        
     }
     
     func deleteItem(id: String) {
         todoItemsList.removeAll { $0.id == id }
-        do {
-            try save(to: "todoItems.json")
-            DDLogInfo("Item with id \(id) successfully deleted")
-        } catch {
-            DDLogInfo("Failed to delete item with id \(id)")
-        }
+        try? save(to: "todoItems.json")
     }
     
     func save(to fileName: String) throws {
         let jsonObject = todoItemsList.map { $0.json }
         let jsonData = try JSONSerialization.data(withJSONObject: jsonObject, options: [])
         let url = getFileURL(fileName: fileName)
-        do {
-            try jsonData.write(to: url)
-            DDLogInfo("Item successfully saved")
-        } catch {
-            DDLogInfo("Failed to save item")
-        }
+        try jsonData.write(to: url)
+        prepareDateSections()
+        
+    }
+    
+    func load(fromJSON fileName: String) throws {
+        let url = getFileURL(fileName: fileName)
+        let jsonData = try Data(contentsOf: url)
+        guard let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [Any] else { return }
+        todoItemsList = jsonObject.compactMap { TodoItem.parse(json: $0) }
         prepareDateSections()
     }
     
-    func load(fromJSON fileName: String) {
+    func load(fromCSV fileName: String) throws {
         let url = getFileURL(fileName: fileName)
-        do {
-            let jsonData = try Data(contentsOf: url)
-            guard let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [Any] else { return }
-            todoItemsList = jsonObject.compactMap { TodoItem.parse(json: $0) }
-            prepareDateSections()
-            DDLogInfo("Successfully loaded items list")
-        } catch {
-            DDLogInfo("Failed to load items list")
-        }
-    }
-    
-    func load(fromCSV fileName: String) {
-        let url = getFileURL(fileName: fileName)
-        do {
-            let csvString = try String(contentsOf: url)
-            let rows = csvString.components(separatedBy: "\n").dropFirst()
-            todoItemsList = rows.compactMap { TodoItem.parse(csv: $0) }
-            DDLogInfo("Successfully loaded items list")
-        } catch {
-            DDLogInfo("Failed to load items list")
-        }
+        let csvString = try String(contentsOf: url)
+        let rows = csvString.components(separatedBy: "\n").dropFirst()
+        todoItemsList = rows.compactMap { TodoItem.parse(csv: $0) }
+        
     }
     
     func toggleCompleted(for itemId: String) {
@@ -87,6 +70,7 @@ class FileCache: ObservableObject {
         }
         try? save(to: "todoItems.json")
     }
+    
     
     static func formatDate(date: Date?, dateFormat: String) -> String? {
         guard let date  else {
@@ -111,15 +95,18 @@ class FileCache: ObservableObject {
         return urls[0].appendingPathComponent(fileName)
     }
     
+    
     func prepareDateSections() {
         var todoDictionary = [String: DateSection]()
         var listOfSections = [DateSection]()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "d MMMM"
         dateFormatter.locale = Locale(identifier: "ru_RU")
+        
         let dateFormatterForDatesList = DateFormatter()
         dateFormatterForDatesList.dateFormat = "d\n \nMMMM"
         dateFormatterForDatesList.locale = Locale(identifier: "ru_RU")
+        
         for todo in todoItemsList {
             if let formattedDeadline = FileCache.formatDate(date: todo.deadline, dateFormat: "d MMMM") {
                 if todoDictionary[formattedDeadline] != nil {
@@ -139,7 +126,9 @@ class FileCache: ObservableObject {
                 }
             }
         }
+
         listOfSections = Array(todoDictionary.values)
+        
         listOfSections.sort {
             if $0.date == "Другое" {
                 return false
@@ -152,21 +141,23 @@ class FileCache: ObservableObject {
             }
             return date1 < date2
         }
+        
         datesList = listOfSections.map { dateSection in
             if dateSection.date == "Другое" {
                 return "Другое"
             }
             return dateFormatterForDatesList.string(from: dateFormatter.date(from: dateSection.date)!)
         }
+        
         dateSectionsList = listOfSections
     }
 
+
+    
     func updateToDoItem(_ updatedItem: TodoItem) {
         if let index = todoItemsList.firstIndex(where: { $0.id == updatedItem.id }) {
             todoItemsList[index] = updatedItem
             try? save(to: "todoItems.json")
         }
     }
-    
-    
 }
