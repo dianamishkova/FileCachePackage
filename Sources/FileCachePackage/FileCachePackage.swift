@@ -7,8 +7,8 @@
 
 import Foundation
 
-class FileCachePackage<T: JSONProtocol & CSVProtocol> {
-    func save(items: [T], to fileName: String) throws {
+public class FileCachePackage<T: JSONProtocol & CSVProtocol> {
+    public func save(items: [T], to fileName: String) throws {
         let jsonObject = items.map { $0.json }
         let jsonData = try JSONSerialization.data(withJSONObject: jsonObject, options: [])
         let url = getFileURL(fileName: fileName)
@@ -16,14 +16,14 @@ class FileCachePackage<T: JSONProtocol & CSVProtocol> {
         
     }
     
-    func load(fromJSON fileName: String) throws -> [T] {
+    public func load(fromJSON fileName: String) throws -> [T] {
         let url = getFileURL(fileName: fileName)
         let jsonData = try Data(contentsOf: url)
         guard let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [Any] else { return [] }
         return jsonObject.compactMap { T.parse(json: $0) }
     }
     
-    func load(fromCSV fileName: String) throws -> [T] {
+    public func load(fromCSV fileName: String) throws -> [T] {
         let url = getFileURL(fileName: fileName)
         let csvString = try String(contentsOf: url)
         let rows = csvString.components(separatedBy: "\n").dropFirst()
