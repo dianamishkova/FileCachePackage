@@ -7,7 +7,7 @@
 
 import Foundation
 
-class FileCache<T: JSONProtocol & CSVProtocol> {
+class FileCachePackage<T: JSONProtocol & CSVProtocol> {
     func save(items: [T], to fileName: String) throws {
         let jsonObject = items.map { $0.json }
         let jsonData = try JSONSerialization.data(withJSONObject: jsonObject, options: [])
