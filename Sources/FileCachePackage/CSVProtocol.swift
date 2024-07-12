@@ -7,6 +7,6 @@
 
 import Foundation
 
-protocol CSVProtocol {
+public protocol CSVProtocol {
     static func parse(csv: String) -> Self?
 }
